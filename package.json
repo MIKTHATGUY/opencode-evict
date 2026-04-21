@@ -12,7 +12,7 @@
 		"check": "biome check ./src",
 		"dev": "bun run src/index.ts",
 		"build": "tsc",
-		"build:releases": "bun build src/index.ts --compile --minify --target=bun-linux-x64,bun-windows-x64,bun-darwin-arm64,bun-darwin-x64 --outdir releases",
+		"build:releases": "bun build src/index.ts --compile --minify --outfile releases/oc-evict --target=bun-linux-x64 && bun build src/index.ts --compile --minify --outfile releases/oc-evict-windows.exe --target=bun-windows-x64 && bun build src/index.ts --compile --minify --outfile releases/oc-evict-darwin-arm64 --target=bun-darwin-arm64 && bun build src/index.ts --compile --minify --outfile releases/oc-evict-darwin-x64 --target=bun-darwin-x64",
 		"prepare": "npm run build"
 	},
 	"keywords": [
