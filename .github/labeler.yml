@@ -1,0 +1,16 @@
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ['README.md', '**/*.md']
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**/*']
+src:
+  - changed-files:
+      - any-glob-to-any-file: ['src/**/*']
+providers:
+  - changed-files:
+      - any-glob-to-any-file: ['src/providers/**/*']
+enhancement:
+  - head-branch: ['^feat/', '^feature/']
+fix:
+  - head-branch: ['^fix/', '^hotfix/']
