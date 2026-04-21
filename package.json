@@ -6,10 +6,7 @@
 	"bin": {
 		"oc-evict": "dist/index.js"
 	},
-	"publishConfig": {
-		"access": "public",
-		"registry": "https://registry.npmjs.org"
-	},
+
 	"scripts": {
 		"lint": "biome lint ./src",
 		"format": "biome format ./src --write",
