@@ -1,12 +1,11 @@
 {
 	"name": "@mikthatguy/opencode-evict",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"description": "Refresh OpenCode's local model cache with live provider data",
 	"type": "module",
 	"bin": {
 		"oc-evict": "dist/index.js"
 	},
-
 	"scripts": {
 		"lint": "biome lint ./src",
 		"format": "biome format ./src --write",
