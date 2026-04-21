@@ -1,0 +1,48 @@
+# Development files
+src/
+.opencode/
+node_modules/
+tests/
+test/
+opencode.json
+.opencode/
+
+# Build artifacts
+dist/ (we want this included, but exclude intermediate)
+*.tsbuildinfo
+
+# Config files
+tsconfig.json
+biome.json
+bun.lock
+package-lock.json
+opencode.json
+
+# Git
+.git/
+.gitignore
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Compiled binaries (we only want the dist/ folder for JS)
+oc-evict
+oc-evict.exe
+oc-evict-linux
+oc-evict-mac
+releases/
+*.binary
+
+# Misc
+*.log
+.env
+.env.*
+*.md (except README.md)
+
+# Keep these:
+!README.md
+!LICENSE
+!package.json
+!dist/

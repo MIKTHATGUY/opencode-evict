@@ -1,0 +1,52 @@
+name: Publish Package
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write   # CRITICAL: Required to publish to GitHub Packages
+  id-token: write   # CRITICAL: Required for npm Trusted Publishing (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Setup Bun for install and build
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        
+      - name: Install dependencies
+        run: bun install
+        
+      - name: Build project
+        run: bun run build
+
+      # 2. Setup Node & Publish to public npm registry (Using OIDC)
+      - name: Setup Node for npmjs
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24' # Node 22.14.0+ is required for Trusted Publishing
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: Publish to npm
+        run: npm publish
+        # NO token required here! The id-token: write permission securely handles this.
+
+      # 3. Setup Node & Publish to GitHub Packages (Using GITHUB_TOKEN)
+      - name: Setup Node for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://npm.pkg.github.com'
+          # Optional: scope: '@your-github-username'
+          
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
