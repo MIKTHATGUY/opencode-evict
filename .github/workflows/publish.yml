@@ -29,17 +29,18 @@ jobs:
       - name: Build project
         run: bun run build
 
-      # 2. Setup Node & Publish to public npm registry (Using OIDC)
+    # 2. Setup Node & Publish to public npm registry (Using OIDC)
       - name: Setup Node for npmjs
         uses: actions/setup-node@v4
         with:
-          node-version: '24' # Node 22.14.0+ is required for Trusted Publishing
+          node-version: '24' 
           registry-url: 'https://registry.npmjs.org'
           
       - name: Publish to npm
-        run: npm publish
-        # NO token required here! The id-token: write permission securely handles this.
+        # Add --provenance to trigger OIDC, and --access public for the scoped name
+        run: npm publish --provenance --access public
 
+        
       # 3. Setup Node & Publish to GitHub Packages (Using GITHUB_TOKEN)
       - name: Setup Node for GitHub Packages
         uses: actions/setup-node@v4
