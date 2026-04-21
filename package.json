@@ -1,6 +1,6 @@
 {
 	"name": "@mikthatguy/opencode-evict",
-	"version": "1.0.16",
+	"version": "1.0.17",
 	"description": "Refresh OpenCode's local model cache with live provider data",
 	"type": "module",
 	"bin": {
