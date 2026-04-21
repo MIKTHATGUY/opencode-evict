@@ -131,8 +131,8 @@ bunx @mikthatguy/opencode-evict --export-contrib --output-dir ./my-contributions
 
 - **Cache location is OS-Native.** We auto-detect where OpenCode hides its cache (prefers existing locations):
   - **Windows**: `~/.cache/opencode/models.json` (primary), or `%LOCALAPPDATA%\opencode\models.json`, `%APPDATA%\opencode\models.json`, `~/AppData/Local/opencode/models.json`
-  - **macOS**: `~/Library/Caches/opencode/models.json` (primary), or `~/.cache/opencode/models.json`
-  - **Linux**: `~/.cache/opencode/models.json` or `$XDG_CACHE_HOME/opencode/models.json`
+  - **macOS**: `~/.cache/opencode/models.json` (primary), or `~/Library/Caches/opencode/models.json`
+  - **Linux**: `~/.cache/opencode/models.json` (primary), or `$XDG_CACHE_HOME/opencode/models.json`
 - **VIP providers.** "Active" provider integrations live in `src/providers/index.ts` (currently just Kilo). Add more there if you want special handling.
 
 ---

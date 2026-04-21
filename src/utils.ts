@@ -20,8 +20,8 @@ export function getCachePath(): string {
 		if (appData) candidates.push(join(appData, "opencode"));
 		candidates.push(join(osHomedir(), "AppData", "Local", "opencode"));
 	} else if (platform === "darwin") {
-		candidates.push(join(osHomedir(), "Library", "Caches", "opencode"));
 		candidates.push(join(osHomedir(), ".cache", "opencode"));
+		candidates.push(join(osHomedir(), "Library", "Caches", "opencode"));
 	} else {
 		candidates.push(join(osHomedir(), ".cache", "opencode"));
 	}
