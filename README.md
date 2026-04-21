@@ -1,6 +1,6 @@
 # OpenCode Evict 🥾
 
-[![GitHub package](https://img.shields.io/github/package-json/v/MIKTHATGUY/opencode-evict?color=green&label=GitHub%20Packages)](https://github.com/MIKTHATGUY/opencode-evict/packages)
+[![npm version](https://img.shields.io/npm/v/@mikthatguy/opencode-evict.svg?color=cb3837)](https://www.npmjs.com/package/@mikthatguy/opencode-evict)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/MIKTHATGUY/opencode-evict.svg?style=social)](https://github.com/MIKTHATGUY/opencode-evict/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/MIKTHATGUY/opencode-evict.svg)](https://github.com/MIKTHATGUY/opencode-evict/issues)
@@ -9,7 +9,7 @@
 
 Your local model registry isn't just stale — it belongs in a museum. If you’ve ever screamed at your screen because a provider dropped a shiny new model hours ago and OpenCode is still pretending it’s science fiction, congratulations: you are a victim of cached JSON.
 
-OpenCode Evict (`oc-evict`) is a ruthless, stupid-fast CLI that refreshes OpenCode’s local `models.json` cache with live provider data, merges it with [models.dev](https://models.dev), and can even help you contribute missing models back to the community.
+OpenCode Evict (`oc-evict`) is a ruthless, stupid-fast CLI that refreshes OpenCode’s local `models.json` cache with live provider data, merges it with[models.dev](https://models.dev), and can even help you contribute missing models back to the community.
 
 ---
 
@@ -28,27 +28,23 @@ OpenCode Evict (`oc-evict`) is a ruthless, stupid-fast CLI that refreshes OpenCo
 
 ## ⚡ Installation
 
-### Via GitHub Packages (Recommended)
+### Via Public npm Registry (Recommended)
 
 > [!TIP]
-> `oc-evict` is now published on GitHub Packages instead of the public npm registry. 
+> `opencode-evict` is now officially published on the public npm registry! 
 
-To run it instantly via `npx`, you can specify the package with its scope:
+To run it instantly via `bunx` without installing:
 
 ```bash
-npx --registry=https://npm.pkg.github.com @mikthatguy/oc-evict
+bunx @mikthatguy/opencode-evict
 ```
 
-Or install it globally to have it always available:
+Or install it globally using `bun` to have the `oc-evict` command always available:
 
 ```bash
-npm install -g @mikthatguy/oc-evict --registry=https://npm.pkg.github.com
+bun add -g @mikthatguy/opencode-evict
 oc-evict
 ```
-
-> [!NOTE]
-> If you encounter authentication issues, you may need to log in to GitHub Packages first using a Personal Access Token with `read:packages` permissions:
-> `npm login --scope=@mikthatguy --registry=https://npm.pkg.github.com`
 
 ### From Source (Bun)
 
@@ -74,12 +70,13 @@ bun run build:mac
 
 ## Reverting back to the old cache
 > [!WARNING]
-> This will overwrite your current cache with the old one. Make sure to back up any manually
+> This will overwrite your current cache with the old one. Make sure to back up any manually added models before doing this!
 
 ```bash
 opencode models --refresh
 ```
 
+---
 
 ## 🔌 Supported Providers
 
@@ -98,7 +95,7 @@ opencode models --refresh
 Just run the command to refresh your cache:
 
 ```bash
-npx --registry=https://npm.pkg.github.com @mikthatguy/oc-evict
+bunx @mikthatguy/opencode-evict
 ```
 
 ### 🎛 Flags (Choose Your Own Adventure)
@@ -119,7 +116,7 @@ npx --registry=https://npm.pkg.github.com @mikthatguy/oc-evict
 If you want to help keep the community database up to date, use the export flag:
 
 ```bash
-npx --registry=https://npm.pkg.github.com @mikthatguy/oc-evict --export-contrib --output-dir ./my-contributions
+bunx @mikthatguy/opencode-evict --export-contrib --output-dir ./my-contributions
 ```
 
 > [!IMPORTANT]
@@ -129,7 +126,7 @@ npx --registry=https://npm.pkg.github.com @mikthatguy/oc-evict --export-contrib 
 
 ## 📜 The Fine Print
 
-> [!CAUTION]
+>[!CAUTION]
 > **We don’t delete things.** This tool is a hoarder, not a janitor. It injects what you’re missing; it doesn’t play whack-a-mole with deprecated models.
 
 - **Cache location is OS-Native.** We auto-detect where OpenCode hides its cache:
