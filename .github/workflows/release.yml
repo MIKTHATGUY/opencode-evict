@@ -46,7 +46,7 @@ jobs:
           git add package.json
           git commit -m "chore: release v${{ steps.bump.outputs.new_version }} [skip ci]"
           git tag ${{ steps.bump.outputs.tag }}
-          git push origin main --follow-tags
+          git push origin master --follow-tags
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
