@@ -6,7 +6,6 @@
 	"bin": {
 		"oc-evict": "dist/index.js"
 	},
-
 	"scripts": {
 		"lint": "biome lint ./src",
 		"format": "biome format ./src --write",
