@@ -13,6 +13,7 @@ export function getCachePath(): string {
 	const candidates: string[] = [];
 
 	if (platform === "win32") {
+		candidates.push(join(osHomedir(), ".cache", "opencode"));
 		const localAppData = process.env.LOCALAPPDATA;
 		const appData = process.env.APPDATA;
 		if (localAppData) candidates.push(join(localAppData, "opencode"));
@@ -20,12 +21,13 @@ export function getCachePath(): string {
 		candidates.push(join(osHomedir(), "AppData", "Local", "opencode"));
 	} else if (platform === "darwin") {
 		candidates.push(join(osHomedir(), "Library", "Caches", "opencode"));
+		candidates.push(join(osHomedir(), ".cache", "opencode"));
+	} else {
+		candidates.push(join(osHomedir(), ".cache", "opencode"));
 	}
 
 	const xdgCache = process.env.XDG_CACHE_HOME;
 	if (xdgCache) candidates.push(join(xdgCache, "opencode"));
-
-	candidates.push(join(osHomedir(), ".cache", "opencode"));
 
 	// Prefer an existing location (or the first candidate otherwise).
 	for (const dir of candidates) {
