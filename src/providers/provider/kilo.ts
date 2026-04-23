@@ -1,16 +1,13 @@
-import { consola } from "consola";
 import type { AbstractProvider, Model } from "../../types.js";
 
 export const kiloCodeProvider: AbstractProvider = {
 	id: "kilo",
 	isEnabled: () => true,
 	fetchModels: async (): Promise<Model[]> => {
-		consola.info("Querying Kilo API...");
 		try {
 			const response = await fetch("https://api.kilo.ai/api/gateway/models");
 
 			if (!response.ok) {
-				consola.warn(`Kilo API failed: ${response.status}`);
 				return [];
 			}
 
@@ -61,10 +58,8 @@ export const kiloCodeProvider: AbstractProvider = {
 				},
 			}));
 
-			consola.success(`Fetched ${models.length} models from Kilo`);
 			return models;
 		} catch (error) {
-			consola.error(`Kilo API failed: ${error}`);
 			return [];
 		}
 	},

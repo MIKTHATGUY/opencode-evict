@@ -46,6 +46,12 @@ const mainCommand = defineCommand({
 				"Always print models that are missing/outdated from models.dev",
 			default: true,
 		},
+		"recap": {
+			type: "boolean",
+			description:
+				"Automatically create a recap file for missing models",
+			default: false,
+		},
 	},
 	run({ args }) {
 		runRefresher({
@@ -54,6 +60,7 @@ const mainCommand = defineCommand({
 			tryBearer: args["try-bearer"],
 			exportContrib: args["export-contrib"],
 			outputDir: args["output-dir"],
+			recap: args["recap"],
 		}).catch((error) => {
 			consola.error(error);
 			process.exit(1);

@@ -14,53 +14,66 @@ import {
 	writeCache,
 } from "./utils.js";
 
+interface ProviderStats {
+	providerId: string;
+	fetched: number;
+	newlyAdded: number;
+	alreadyCached: number;
+	status: "success" | "skipped" | "error";
+}
+
+const PROGRESS_BAR_WIDTH = 20;
+
+function clearProgressLine(): void {
+	process.stdout.write("\r" + " ".repeat(PROGRESS_BAR_WIDTH + 20) + "\r");
+}
+
+function updateProgressBar(value: number, total: number): void {
+	const percent = Math.min(1, value / total);
+	const filled = Math.floor(percent * PROGRESS_BAR_WIDTH);
+	const bar = "=".repeat(filled) + " ".repeat(PROGRESS_BAR_WIDTH - filled);
+	process.stdout.write(`\r[${bar}] ${value}/${total} providers`);
+	if (value >= total) {
+		process.stdout.write("\n");
+	}
+}
+
 function injectMissingModels(
 	baseCatalog: ModelsDevCatalog,
 	liveModels: Model[],
 	provider: string,
-): number {
+	originalCatalog?: ModelsDevCatalog,
+): { newlyAdded: number; alreadyCached: number } {
 	const providerData = baseCatalog[provider];
 	if (!providerData?.models) {
 		consola.warn(`Provider ${provider} not found in models.dev catalog`);
-		return 0;
+		return { newlyAdded: 0, alreadyCached: 0 };
 	}
 
-	const existingIds = new Set<string>(Object.keys(providerData.models));
-	let injected = 0;
-	const injectedModels: string[] = [];
+	// Compare against original catalog (models.dev) only, not the merged cache
+	const originalProvider = originalCatalog?.[provider];
+	const devModelIds = new Set<string>(Object.keys(originalProvider?.models ?? {}));
+	let newlyAdded = 0;
+	let alreadyCached = 0;
 
 	for (const model of liveModels) {
-		// Only skip if the exact ID exists in the specific provider
-		if (!existingIds.has(model.id)) {
-			providerData.models[model.id] = model;
-			injected++;
-			existingIds.add(model.id); // Prevent intra-batch duplicates
-			injectedModels.push(model.id);
+		// Only process if the model is not in models.dev
+		if (!devModelIds.has(model.id)) {
+			// Check if already in baseCatalog (from previous cache)
+			if (!providerData.models[model.id]) {
+				// Truly new - not in models.dev and not in cache
+				providerData.models[model.id] = model;
+				newlyAdded++;
+			} else {
+				// Already in cache from previous run - update with fresh data
+				providerData.models[model.id] = model;
+				alreadyCached++;
+			}
+			devModelIds.add(model.id); // Prevent intra-batch duplicates
 		}
 	}
 
-	if (injectedModels.length > 0) {
-		if (injectedModels.length <= 2) {
-			consola.info(
-				chalk.green(
-					`Injected ${injectedModels.length} models for ${provider}: ${injectedModels.join(", ")}`,
-				),
-			);
-		} else {
-			// Find the shortest model names to keep the output extremely compact
-			const shortestModels = [...injectedModels].sort(
-				(a, b) => a.length - b.length,
-			);
-			const samples = shortestModels.slice(0, 2).join(", ");
-			consola.info(
-				chalk.green(
-					`Injected ${injectedModels.length} models for ${provider} (e.g. ${samples}...)`,
-				),
-			);
-		}
-	}
-
-	return injected;
+	return { newlyAdded, alreadyCached };
 }
 
 export interface RefresherOptions {
@@ -69,6 +82,7 @@ export interface RefresherOptions {
 	tryBearer?: boolean;
 	exportContrib?: boolean;
 	outputDir?: string;
+	recap?: boolean;
 }
 
 export async function runRefresher(
@@ -80,13 +94,18 @@ export async function runRefresher(
 		tryBearer = false,
 		exportContrib = false,
 		outputDir = "./modelsai",
+		recap = false,
 	} = options;
+
+	const startTime = Date.now();
 
 	p.intro(chalk.cyan("OpenCode Cache Refresher"));
 
+	p.log.info("Phase 1: Loading local cache...");
 	const cachePath = getCachePath();
-	consola.info(`Cache path: ${cachePath}`);
+	console.log(chalk.gray(`Cache path: ${cachePath}`));
 
+	p.log.info("Phase 2: Fetching canonical models.dev registry...");
 	const devCatalog = await fetchModelsDev();
 	const existingCache = readCache(cachePath);
 
@@ -95,83 +114,94 @@ export async function runRefresher(
 	if (existingCache) {
 		for (const providerId in existingCache) {
 			if (!baseCatalog[providerId]) {
-				// Provider entirely custom? Preserve it.
 				baseCatalog[providerId] = existingCache[providerId];
 			} else {
-				// Provider exists in both, merge models (favor existing cache for prior injected ones)
 				baseCatalog[providerId].models = {
 					...devCatalog[providerId]?.models,
 					...existingCache[providerId]?.models,
 				};
 			}
 		}
-		consola.info(`Loaded previous entries from existing cache`);
+		console.log(chalk.gray("Loaded entries from models.dev"));
 	}
 
 	const providersFromDev = getAllProvidersFromModelsDev(baseCatalog);
 
+	const providerStats: ProviderStats[] = [];
 	let totalInjected = 0;
 
+	// Get IDs of active providers to avoid double-fetching
+	const activeProviderIds = new Set(activeProviders.map(p => p.id));
+
+	// Calculate total providers for progress bar
+	let totalProviders = 0;
 	if (betaCheckGenericProvider) {
-		consola.info("Checking generic providers from models.dev...");
-
-		let genericResults: { providerId: string; models: any[] }[] = [];
-		const fetchEntries = Object.entries(providersFromDev).filter(
-			([_, genericProvider]) => !!genericProvider.apiEndpoint,
+		const genericEntries = Object.entries(providersFromDev).filter(
+			([pid, p]) => !!p.apiEndpoint && !activeProviderIds.has(pid),
 		);
+		totalProviders += genericEntries.length;
+	}
+	totalProviders += activeProviders.filter((p) => p.isEnabled()).length;
 
-		if (tryBearer) {
-			// If interactive prompts might trigger, fetch sequentially to prevent CLI glitching
-			for (const [providerId, genericProvider] of fetchEntries) {
-				try {
-					const models = await fetchGenericPublicModels(
-						genericProvider,
-						5000,
-						tryBearer,
-					);
-					genericResults.push({ providerId, models });
-				} catch (_e) {
-					genericResults.push({ providerId, models: [] });
-				}
-			}
-		} else {
-			// Fetch in parallel for maximum performance when interactive prompts are disabled
-			const promises = fetchEntries.map(
-				async ([providerId, genericProvider]) => {
-					try {
-						const models = await fetchGenericPublicModels(
-							genericProvider,
-							5000,
-							false,
-						);
-						return { providerId, models };
-					} catch (_e) {
-						return { providerId, models: [] };
-					}
-				},
-			);
-			genericResults = await Promise.all(promises);
-		}
-
-		for (const result of genericResults) {
-			if (result.models && result.models.length > 0) {
-				const injectedCount = injectMissingModels(
-					baseCatalog,
-					result.models,
-					result.providerId,
-				);
-				totalInjected += injectedCount;
-				if (injectedCount > 0)
-					consola.success(
-						chalk.green(
-							`Successfully merged ${injectedCount} models for generic provider: ${result.providerId}`,
-						),
-					);
-			}
-		}
+	let currentProvider = 0;
+	if (totalProviders > 0) {
+		p.log.info("Phase 3: Scanning live provider APIs...");
+		updateProgressBar(0, totalProviders);
 	}
 
-	const activeFetchPromises = activeProviders.map(async (provider) => {
+	if (betaCheckGenericProvider) {
+		const fetchEntries = Object.entries(providersFromDev).filter(
+			([pid, genericProvider]) =>
+				!!genericProvider.apiEndpoint && !activeProviderIds.has(pid),
+		);
+
+		const genericPromises = fetchEntries.map(async ([providerId, genericProvider]) => {
+			try {
+				const models = await fetchGenericPublicModels(
+					genericProvider,
+					5000,
+					tryBearer,
+				);
+				if (models && models.length > 0) {
+					const { newlyAdded, alreadyCached } = injectMissingModels(
+						baseCatalog,
+						models,
+						providerId,
+						devCatalog,
+					);
+					totalInjected += newlyAdded;
+					providerStats.push({
+						providerId,
+						fetched: models.length,
+						newlyAdded,
+						alreadyCached,
+						status: "success",
+					});
+				} else {
+					providerStats.push({
+						providerId,
+						fetched: 0,
+						newlyAdded: 0,
+						alreadyCached: 0,
+						status: "error",
+					});
+				}
+			} catch (_e) {
+				providerStats.push({
+					providerId,
+					fetched: 0,
+					newlyAdded: 0,
+					alreadyCached: 0,
+					status: "error",
+				});
+			}
+			currentProvider++;
+			updateProgressBar(currentProvider, totalProviders);
+		});
+		await Promise.all(genericPromises);
+	}
+
+	const activePromises = activeProviders.map(async (provider) => {
 		if (provider.baseConfig && !baseCatalog[provider.id]) {
 			baseCatalog[provider.id] = provider.baseConfig;
 		}
@@ -179,65 +209,129 @@ export async function runRefresher(
 		if (provider.isEnabled()) {
 			try {
 				const models = await provider.fetchModels();
-				return { providerId: provider.id, models };
+				if (models.length > 0) {
+					const { newlyAdded, alreadyCached } = injectMissingModels(
+						baseCatalog,
+						models,
+						provider.id,
+						devCatalog,
+					);
+					totalInjected += newlyAdded;
+					providerStats.push({
+						providerId: provider.id,
+						fetched: models.length,
+						newlyAdded,
+						alreadyCached,
+						status: "success",
+					});
+				} else {
+					providerStats.push({
+						providerId: provider.id,
+						fetched: 0,
+						newlyAdded: 0,
+						alreadyCached: 0,
+						status: "skipped",
+					});
+				}
 			} catch (e) {
-				consola.error(
-					`Error querying active provider ${provider.id} API: ${e}`,
+				clearProgressLine();
+				console.log(
+					chalk.red(`Error querying active provider ${provider.id} API: ${e}`),
 				);
-				return { providerId: provider.id, models: [] };
+				providerStats.push({
+					providerId: provider.id,
+					fetched: 0,
+					newlyAdded: 0,
+					alreadyCached: 0,
+					status: "error",
+				});
 			}
 		} else {
-			consola.warn(
-				`Skipping active provider ${provider.id} (credentials not found)`,
+			clearProgressLine();
+			console.log(
+				chalk.yellow(
+					`Skipping active provider ${provider.id} (credentials not found)`,
+				),
 			);
-			return null;
+			providerStats.push({
+				providerId: provider.id,
+				fetched: 0,
+				newlyAdded: 0,
+				alreadyCached: 0,
+				status: "skipped",
+			});
 		}
+		currentProvider++;
+		updateProgressBar(currentProvider, totalProviders);
 	});
-
-	const activeResults = await Promise.all(activeFetchPromises);
-
-	for (const result of activeResults) {
-		if (result && result.models.length > 0) {
-			const injectedCount = injectMissingModels(
-				baseCatalog,
-				result.models,
-				result.providerId,
-			);
-			totalInjected += injectedCount;
-			if (injectedCount > 0)
-				consola.success(
-					chalk.green(
-						`Successfully merged ${injectedCount} models for active provider: ${result.providerId}`,
-					),
-				);
-		}
-	}
+	await Promise.all(activePromises);
 
 	if (dryRun) {
-		consola.info(
-			`[DRY RUN] Skipping cache write. Simulated write to ${cachePath}`,
-		);
-	} else {
-		writeCache(cachePath, baseCatalog);
-		consola.success(`Cache written to ${cachePath}`);
-	}
-
-	if (totalInjected > 0) {
-		consola.success(
-			chalk.green(`Injected ${totalInjected} new models globally`),
-		);
-		consola.log(
+		console.log(
 			chalk.yellow(
-				`Note: ${totalInjected} models were missing from the base catalog and have been injected. Consider contributing these models to the main models.dev catalog for better visibility.`,
+				`[DRY RUN] Skipping cache write. Simulated write to ${cachePath}`,
 			),
 		);
 	} else {
-		consola.success(chalk.green(`All models up to date!`));
+		writeCache(cachePath, baseCatalog);
+		console.log(chalk.green(`Cache written to ${cachePath}`));
 	}
 
-	consola.info("Models missing from models.dev:");
-	let localMissingCount = 0;
-	const missingModels: string[] = [];
+	// Deduplicate provider stats - keep latest entry for each provider
+	// Deduplicate provider stats - keep latest entry for each provider
+const dedupedStats = providerStats.reduceRight<ProviderStats[]>((acc, stat) => {
+    const existing = acc.find(s => s.providerId === stat.providerId);
+    if (!existing) {
+        acc.unshift(stat);
+    }
+    return acc;
+}, []);
+
+// Filter to only show providers with activity
+const injectedStats = dedupedStats.filter(s => s.newlyAdded > 0 || s.alreadyCached > 0);
+
+// Print summary table with dynamic width
+
+if (injectedStats.length > 0) {
+  const GAP = "   "; // 3-space column gutter
+
+  const headers = ["Provider", "Fetched", "New to cache", "Upstream gap"];
+  const rows = injectedStats.map(s => [
+    s.providerId,
+    s.fetched.toLocaleString(),
+    s.newlyAdded.toLocaleString(),
+    (s.newlyAdded + s.alreadyCached).toLocaleString(),
+  ]);
+
+  // Column widths: max of header vs every data value
+  const cols = headers.map((h, i) =>
+    Math.max(h.length, ...rows.map(r => r[i].length))
+  );
+
+  // col 0 = text → left-align (padEnd)
+  // col 1-3 = numbers → right-align (padStart)
+  const fmt = (val: string, col: number) =>
+    col === 0 ? val.padEnd(cols[col]) : val.padStart(cols[col]);
+
+  const sep       = cols.map(w => "─".repeat(w)).join("─".repeat(GAP.length));
+  const headerRow = headers.map((h, i) => fmt(h, i)).join(GAP);
+
+  console.log("");
+  console.log(chalk.dim(sep));
+  console.log(chalk.bold(headerRow));
+  console.log(chalk.dim(sep));
+  for (const row of rows) {
+    const name = chalk.blue(fmt(row[0], 0));
+    const nums = chalk.green([1, 2, 3].map(i => fmt(row[i], i)).join(GAP));
+    console.log(name + GAP + nums);
+  }
+}
+
+	// Handle upstream gap (models not in models.dev)
+	console.log("");
+	console.log(chalk.bold("Upstream Gap Report (Not in models.dev):"));
+	const upstreamGapModels: string[] = [];
+	let upstreamGapCount = 0;
 
 	for (const providerId in baseCatalog) {
 		const baseModels = baseCatalog[providerId].models || {};
@@ -246,43 +340,60 @@ export async function runRefresher(
 		for (const modelId in baseModels) {
 			const origModel = originalModels[modelId];
 			if (!origModel) {
-				missingModels.push(`${providerId}/${modelId}`);
-				localMissingCount++;
+				upstreamGapModels.push(`${providerId}/${modelId}`);
+				upstreamGapCount++;
 			}
 		}
 	}
-	if (localMissingCount === 0) {
-		consola.log(
+	const finishtime = Date.now();
+	if (upstreamGapCount === 0) {
+		console.log(
 			chalk.gray(" None! The cache and models.dev are perfectly synced."),
 		);
 	} else {
-		if (localMissingCount < 15) {
-			for (const model of missingModels) {
-				consola.log(chalk.gray(` - ${model}`));
+		if (upstreamGapCount < 15) {
+			for (const model of upstreamGapModels) {
+				console.log(chalk.gray(` - ${model}`));
 			}
 		}
-		consola.info(`Total missing from models.dev: ${localMissingCount}`);
+		console.log(
+			chalk.gray(`Total models not yet indexed by models.dev: ${upstreamGapCount}`),
+		);
 
-		let createRecap = false;
-		if (localMissingCount >= 15) {
-			const confirm = await p.confirm({
-				message: `There are ${localMissingCount} missing models. Would you like to create a recap file?`,
+		// Prompt for upstream gap report
+		if (upstreamGapCount > 0) {
+			const createReport = await p.confirm({
+				message: `There are ${upstreamGapCount} models in the upstream gap. Do you want to create a list of the models missing from models.dev?`,
 			});
-			createRecap = confirm !== false;
+			if (createReport) {
+				const outPath = resolve(outputDir);
+				mkdirSync(outPath, { recursive: true });
+				const reportPath = join(outPath, "upstream_gap_report.txt");
+				writeFileSync(reportPath, upstreamGapModels.join("\n"), "utf-8");
+				console.log(chalk.green(`Upstream gap report created: ${reportPath}`));
+			}
 		}
 
-		if (createRecap) {
-			const outPath = resolve(outputDir);
-			mkdirSync(outPath, { recursive: true });
-			const recapPath = join(outPath, "missing_models_recap.txt");
-			writeFileSync(recapPath, missingModels.join("\n"), "utf-8");
-			consola.success(`Recap file created: ${recapPath}`);
-		}
-		
 		if (exportContrib) {
 			exportModelsDevContrib(baseCatalog, devCatalog, outputDir);
 		}
 	}
 
-	p.outro(chalk.green("Cache refreshed successfully!"));
+	// Final summary - split into two distinct outcomes
+	console.log("");
+	if (totalInjected > 0) {
+		const injectedLabel = totalInjected === 1 ? "1 model" : `${totalInjected} models`;
+		console.log(chalk.green(`✓ Cache Status: Added ${injectedLabel} to cache`));
+	} else {
+		console.log(chalk.green("✓ Cache Status: Fully up to date"));
+	}
+
+	if (upstreamGapCount > 0) {
+		const gapLabel = upstreamGapCount === 1 ? "1 model" : `${upstreamGapCount} models`;
+		console.log(chalk.yellow(`⚠ Upstream Gap: ${gapLabel} found in the wild that models.dev hasn't indexed yet`));
+	}
+
+	const elapsed = ((finishtime - startTime) / 1000).toFixed(1);
+	console.log("");
+	p.outro(chalk.green(`Cache refreshed successfully in ${elapsed}s!`));
 }

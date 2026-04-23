@@ -181,7 +181,6 @@ export async function fetchGenericPublicModels(
 			headers.Authorization = `Bearer ${authToken}`;
 		}
 
-		consola.info(`Querying ${provider.id} models ...`);
 		try {
 			const res = await fetch(url, {
 				method: "GET",
@@ -271,9 +270,6 @@ export async function fetchGenericPublicModels(
 			},
 		}));
 
-		consola.success(
-			chalk.green(`Fetched ${models.length} models from ${provider.id}`),
-		);
 		return models;
 	} catch (_error) {
 		return [];
