@@ -5,10 +5,7 @@ export const openRouterProvider: AbstractProvider = {
 	isEnabled: () => true,
 	fetchModels: async (): Promise<Model[]> => {
 		try {
-			const response = await fetch(
-				"https://openrouter.ai/api/v1/models",
-				{},
-			);
+			const response = await fetch("https://openrouter.ai/api/v1/models", {});
 
 			if (!response.ok) {
 				return [];

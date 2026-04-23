@@ -60,11 +60,10 @@ bun run dev
 If you want a standalone executable (no Node.js/Bun required):
 
 ```bash
-bun run build:bin
-# For specific platforms:
-bun run build:linux
-bun run build:mac
+bun run build:releases
 ```
+
+This generates platform-specific binaries in the `releases/` directory.
 
 ---
 
@@ -83,10 +82,11 @@ opencode models --refresh
 | Provider | Status | Description |
 | :--- | :---: | :--- |
 | **Kilo** ([kilo.ai](https://kilo.ai)) | 🟢 **Official** | Fully supported VIP provider integration. |
+| **OpenRouter** ([openrouter.ai](https://openrouter.ai)) | 🟢 **Official** | OpenRouter provider with 200+ models. |
 | **Generic OpenAI-Compatible** | 🟡 **Beta** | Any provider with a public `/models` endpoint that returns a list of models in a reasonable format. |
 
-> [!WARNING]
-> **Beta Feature:** The generic provider check (`--beta-check-generic-provider`) is a hail mary and may not work with all providers. It’s designed to be a "best effort" attempt to pull in models from providers that aren’t officially supported yet. If you rely on it, please consider contributing a proper integration!
+> [!TIP]
+> The generic provider check (`--beta-check-generic-provider`) is a hail mary and may not work with all providers. It’s designed to be a "best effort" attempt to pull in models from providers that aren’t officially supported yet. If you rely on it, please consider contributing a proper integration!
 
 ---
 
@@ -108,6 +108,8 @@ bunx @mikthatguy/opencode-evict
 | `--output-dir <path>` | **Target Directory** | Where to drop the exported TOML files and recaps. Defaults to `./modelsai` in your current directory. |
 | `--beta-check-generic-provider` | **YOLO mode** | For providers listed in the baseline, try hitting `api + /models` and inject whatever is publicly accessible. |
 | `--try-bearer` | **Bribe the bouncer** | If a provider hits you with a `401/403`, prompt for a bearer token and retry. |
+| `--ci` | **CI mode** | Run in CI mode (disable interactive prompts, flatten output, fail-fast on errors). |
+| `--recap` | **Recap** | Automatically create a recap file for missing models. |
 
 ---
 
@@ -133,7 +135,7 @@ bunx @mikthatguy/opencode-evict --export-contrib --output-dir ./my-contributions
   - **Windows**: `~/.cache/opencode/models.json` (primary), or `%LOCALAPPDATA%\opencode\models.json`, `%APPDATA%\opencode\models.json`, `~/AppData/Local/opencode/models.json`
   - **macOS**: `~/.cache/opencode/models.json` (primary), or `~/Library/Caches/opencode/models.json`
   - **Linux**: `~/.cache/opencode/models.json` (primary), or `$XDG_CACHE_HOME/opencode/models.json`
-- **VIP providers.** "Active" provider integrations live in `src/providers/index.ts` (currently just Kilo). Add more there if you want special handling.
+- **VIP providers.** "Active" provider integrations live in `src/providers/index.ts` (currently Kilo and OpenRouter). Add more there if you want special handling.
 
 ---
 

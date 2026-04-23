@@ -32,7 +32,8 @@ const mainCommand = defineCommand({
 		},
 		"output-dir": {
 			type: "string",
-			description: "Output directory for exported files and recaps (defaults to ./modelsai)",
+			description:
+				"Output directory for exported files and recaps (defaults to ./modelsai)",
 			default: "./modelsai",
 		},
 		"dry-run": {
@@ -44,12 +45,17 @@ const mainCommand = defineCommand({
 			type: "boolean",
 			description:
 				"Always print models that are missing/outdated from models.dev",
-			default: true,
+			default: false,
 		},
-		"recap": {
+		ci: {
 			type: "boolean",
 			description:
-				"Automatically create a recap file for missing models",
+				"Run in CI mode (disable interactive prompts, flatten output, fail-fast on errors)",
+			default: false,
+		},
+		recap: {
+			type: "boolean",
+			description: "Automatically create a recap file for missing models",
 			default: false,
 		},
 	},
@@ -60,7 +66,9 @@ const mainCommand = defineCommand({
 			tryBearer: args["try-bearer"],
 			exportContrib: args["export-contrib"],
 			outputDir: args["output-dir"],
-			recap: args["recap"],
+			recap: args.recap,
+			printMissing: args["print-missing"],
+			ci: args.ci,
 		}).catch((error) => {
 			consola.error(error);
 			process.exit(1);

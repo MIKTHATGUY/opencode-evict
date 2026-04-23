@@ -65,9 +65,3 @@ export interface AbstractProvider {
 	fetchModels: () => Promise<Model[]>;
 	baseConfig?: Provider;
 }
-
-export interface GenericProviderConfig {
-	id: string;
-	apiEndpoint: string | undefined;
-	bearerToken?: string;
-}

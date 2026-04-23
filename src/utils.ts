@@ -83,84 +83,11 @@ export function getAllProvidersFromModelsDev(
 	return providers;
 }
 
-export async function testIfProviderHasPublicModelList(
-	provider: { id: string; apiEndpoint?: string; bearerToken?: string },
-	timeoutMs = 2000,
-): Promise<void> {
-	if (!provider.apiEndpoint) {
-		consola.warn(`${provider.id} has no API endpoint configured`);
-		return;
-	}
-
-	// normalize and target the /models path
-	const base = provider.apiEndpoint.replace(/\/+$/, "");
-	const url = `${base}/models`;
-
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-	try {
-		// Try HEAD first for a lightweight check
-		let res: Response;
-		try {
-			res = await fetch(url, { method: "HEAD", signal: controller.signal });
-		} catch (_headErr) {
-			// If HEAD fails (some servers block HEAD), fall back to GET
-			res = await fetch(url, {
-				method: "GET",
-				signal: controller.signal,
-				headers: {
-					"User-Agent": "oc-evict/1.0",
-					Accept: "application/json, text/*;q=0.8",
-				},
-			});
-		}
-
-		if (res.ok) {
-			consola.info(
-				`${provider.id} has a public API endpoint for models: ${url}`,
-			);
-		} else if (res.status === 405) {
-			// Method not allowed for HEAD — try GET
-			const getRes = await fetch(url, {
-				method: "GET",
-				signal: controller.signal,
-				headers: {
-					"User-Agent": "oc-evict/1.0",
-					Accept: "application/json, text/*;q=0.8",
-				},
-			});
-			if (getRes.ok) {
-				consola.info(
-					`${provider.id} has a public API endpoint for models (GET): ${url}`,
-				);
-			} else {
-				consola.warn(
-					`${provider.id} API endpoint is not accessible: ${url} (status: ${getRes.status})`,
-				);
-			}
-		} else {
-			consola.warn(
-				`${provider.id} API endpoint is not accessible: ${url} (status: ${res.status})`,
-			);
-		}
-	} catch (err: unknown) {
-		if ((err as any)?.name === "AbortError") {
-			consola.warn(
-				`${provider.id} API endpoint check timed out after ${timeoutMs}ms: ${url}`,
-			);
-		} else {
-			consola.error(`${provider.id} API endpoint check failed: ${url}`, err);
-		}
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
 export async function fetchGenericPublicModels(
 	provider: { id: string; apiEndpoint?: string; bearerToken?: string },
 	timeoutMs = 5000,
 	tryBearer = false,
+	ci = false,
 ): Promise<Model[]> {
 	if (!provider.apiEndpoint) return [];
 
@@ -210,18 +137,17 @@ export async function fetchGenericPublicModels(
 			(result.status === 401 || result.status === 403) &&
 			!authToken
 		) {
-			consola.warn(
-				`${provider.id} returned ${result.status}, prompting for bearer token...`,
-			);
+			// Skip prompt in CI mode - just return empty
+			if (ci) {
+				return [];
+			}
+
 			let tokenInput = await text({
 				message: "Enter your bearer token (or press Esc to skip):",
 			});
 
 			while (!tokenInput || typeof tokenInput === "symbol") {
 				if (isCancel(tokenInput)) {
-					consola.info(
-						"Bearer token prompt cancelled, skipping this provider.",
-					);
 					break;
 				}
 				tokenInput = await text({
