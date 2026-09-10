@@ -94,6 +94,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Generate version file
+        run: bun run gen:version
+
       - name: Build binary
         shell: bash
         run: bun build src/index.ts --compile --minify --target=${{ matrix.target }} --outfile=${{ matrix.artifact }}

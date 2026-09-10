@@ -1,6 +1,6 @@
-![Evict for OpenCode — live model registry sync](./evict-header.png)
+![Evict for OpenCode — live model registry sync](./assets/evict-header.png)
 
-<!-- GitHub social preview asset: ./evict-social.png (1280 × 640) -->
+<!-- GitHub social preview asset: ./assets/evict-social.png (1280 × 640) -->
 
 # Evict
 

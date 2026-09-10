@@ -2,11 +2,12 @@
 import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { runRefresher } from "./core.js";
+import { VERSION } from "./version.js";
 
 const mainCommand = defineCommand({
 	meta: {
 		name: "oc-evict",
-		version: "1.0.22",
+		version: VERSION,
 		description: "Live model registry synchronization for OpenCode",
 	},
 

@@ -39,7 +39,13 @@ function updateProgressBar(value: number, total: number): void {
 	}
 }
 
-function injectMissingModels(
+/**
+ * Merge live provider models into the working catalog.
+ *
+ * Only models absent from the original models.dev catalog are considered.
+ * Exported for testing; behavior is covered by tests/merge.test.ts.
+ */
+export function injectMissingModels(
 	baseCatalog: ModelsDevCatalog,
 	liveModels: Model[],
 	provider: string,

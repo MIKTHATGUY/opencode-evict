@@ -59,6 +59,9 @@ typings/
 # TypeScript cache
 *.tsbuildinfo
 
+# Generated version stamp (rebuilt by bun run gen:version)
+src/version.ts
+
 # Optional npm cache directory
 .npm
 
