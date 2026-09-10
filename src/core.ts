@@ -1,10 +1,11 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import * as p from "@clack/prompts";
 import chalk from "chalk";
 import { consola } from "consola";
-import { writeFileSync, mkdirSync } from "fs";
-import { join, resolve } from "path";
 import { activeProviders, fetchModelsDev } from "./providers/index.js";
 import type { Model, ModelsDevCatalog } from "./types.js";
+import { printBanner, printLabel, printRule, printStep } from "./ui.js";
 import {
 	exportModelsDevContrib,
 	fetchGenericPublicModels,
@@ -112,18 +113,24 @@ export async function runRefresher(
 		process.env.FORCE_COLOR = "0";
 	}
 
-	if (!ci) {
-		p.intro(chalk.cyan("OpenCode Cache Refresher"));
-	}
+	if (!ci) printBanner();
 
 	const cachePath = getCachePath();
 	if (!ci) {
-		console.log(chalk.gray(`Cache path: ${cachePath}`));
+		printLabel("Cache", cachePath);
+		printLabel("Mode", dryRun ? "preview (no files changed)" : "refresh");
+		console.log("");
 	} else {
 		console.log(`Cache path: ${cachePath}`);
 	}
+	printStep("info", "Loading the models.dev catalog");
 	const devCatalog = await fetchModelsDev();
 	const existingCache = readCache(cachePath);
+	printStep(
+		"ok",
+		"Baseline ready",
+		`${Object.keys(devCatalog).length.toLocaleString()} providers`,
+	);
 
 	// Merge existing cache into the clean devCatalog incrementally
 	const baseCatalog: ModelsDevCatalog = JSON.parse(JSON.stringify(devCatalog));
@@ -138,7 +145,16 @@ export async function runRefresher(
 				};
 			}
 		}
-		console.log(chalk.gray(`Merged ${existingCache.length} cached entries`));
+		const cachedProviderCount = Object.keys(existingCache).length;
+		const cachedModelCount = Object.values(existingCache).reduce(
+			(total, provider) => total + Object.keys(provider.models ?? {}).length,
+			0,
+		);
+		printStep(
+			"ok",
+			"Local cache merged",
+			`${cachedProviderCount.toLocaleString()} providers / ${cachedModelCount.toLocaleString()} models`,
+		);
 	}
 
 	const providersFromDev = getAllProvidersFromModelsDev(baseCatalog);
@@ -319,14 +335,11 @@ export async function runRefresher(
 	await Promise.all(activePromises);
 
 	if (dryRun) {
-		console.log(
-			chalk.yellow(
-				`[DRY RUN] Skipping cache write. Simulated write to ${cachePath}`,
-			),
-		);
+		printStep("warn", "Preview complete", "cache left unchanged");
 	} else {
-		writeCache(cachePath, baseCatalog);
-		console.log(chalk.green(`Cache written to ${cachePath}`));
+		const { backupPath } = writeCache(cachePath, baseCatalog);
+		printStep("ok", "Cache updated atomically", cachePath);
+		if (backupPath) printStep("info", "Previous cache backed up", backupPath);
 	}
 
 	// Deduplicate provider stats - keep latest entry for each provider
@@ -385,7 +398,7 @@ export async function runRefresher(
 
 	// Handle upstream gap (models not in models.dev)
 	console.log("");
-	console.log(chalk.bold("Upstream Gap Report (Not in models.dev):"));
+	console.log(chalk.bold("Upstream gap"));
 	const upstreamGapModels: string[] = [];
 	let upstreamGapCount = 0;
 
@@ -410,6 +423,12 @@ export async function runRefresher(
 				`Total models not yet indexed by models.dev: ${upstreamGapCount}`,
 			),
 		);
+		if (printMissing) {
+			console.log("");
+			for (const modelId of upstreamGapModels.sort()) {
+				console.log(chalk.dim("  - ") + modelId);
+			}
+		}
 
 		// Prompt for upstream gap report
 		if (upstreamGapCount > 0) {
@@ -446,25 +465,24 @@ export async function runRefresher(
 	if (totalInjected > 0) {
 		const injectedLabel =
 			totalInjected === 1 ? "1 model" : `${totalInjected} models`;
-		console.log(chalk.green(`✓ Cache Status: Added ${injectedLabel} to cache`));
+		printStep("ok", `Added ${injectedLabel} to the local cache`);
 	} else {
-		console.log(chalk.green("✓ Cache Status: Fully up to date"));
+		printStep("ok", "Local cache is up to date");
 	}
 
 	if (upstreamGapCount > 0) {
 		const gapLabel =
 			upstreamGapCount === 1 ? "1 model" : `${upstreamGapCount} models`;
-		console.log(
-			chalk.yellow(
-				`⚠ Upstream Gap: ${gapLabel} found in the wild that models.dev hasn't indexed yet`,
-			),
-		);
+		printStep("warn", `${gapLabel} not indexed by models.dev yet`);
 	}
 
 	const elapsed = ((finishtime - startTime) / 1000).toFixed(1);
 	console.log("");
 	if (!ci) {
-		p.outro(chalk.green(`Cache refreshed successfully in ${elapsed}s!`));
+		printRule();
+		console.log(
+			`${chalk.bold(dryRun ? "Preview finished" : "Refresh finished")} ${chalk.dim(`in ${elapsed}s`)}`,
+		);
 	} else {
 		console.log(`Cache refreshed successfully in ${elapsed}s`);
 	}

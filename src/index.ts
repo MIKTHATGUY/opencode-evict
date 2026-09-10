@@ -6,9 +6,8 @@ import { runRefresher } from "./core.js";
 const mainCommand = defineCommand({
 	meta: {
 		name: "oc-evict",
-		version: "1.0.0",
-		description:
-			"OpenCode Cache Refresher - Refresh model cache with live provider data",
+		version: "1.0.22",
+		description: "Live model registry synchronization for OpenCode",
 	},
 
 	args: {
@@ -38,7 +37,7 @@ const mainCommand = defineCommand({
 		},
 		"dry-run": {
 			type: "boolean",
-			description: "Run the refresher without writing to the cache file",
+			description: "Preview changes without writing files",
 			default: false,
 		},
 		"print-missing": {

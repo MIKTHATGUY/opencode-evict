@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir as osHomedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isCancel, text } from "@clack/prompts";
@@ -42,19 +50,40 @@ export function getCachePath(): string {
 	return join(candidates[0], "models.json");
 }
 
-export function writeCache(cachePath: string, data: unknown): void {
+export interface CacheWriteResult {
+	backupPath: string | null;
+}
+
+export function writeCache(cachePath: string, data: unknown): CacheWriteResult {
 	const cacheDir = dirname(cachePath);
 	if (!existsSync(cacheDir)) {
 		mkdirSync(cacheDir, { recursive: true });
 	}
-	writeFileSync(cachePath, JSON.stringify(data, null, 2));
+
+	const backupPath = existsSync(cachePath) ? `${cachePath}.bak` : null;
+	const temporaryPath = `${cachePath}.${process.pid}.tmp`;
+	if (backupPath) copyFileSync(cachePath, backupPath);
+
+	try {
+		writeFileSync(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+		renameSync(temporaryPath, cachePath);
+	} catch (error) {
+		if (existsSync(temporaryPath)) rmSync(temporaryPath);
+		throw error;
+	}
+
+	return { backupPath };
 }
 
 export function readCache(cachePath: string): ModelsDevCatalog | null {
 	try {
 		if (existsSync(cachePath)) {
 			const data = readFileSync(cachePath, "utf-8");
-			return JSON.parse(data) as ModelsDevCatalog;
+			const parsed = JSON.parse(data) as ModelsDevCatalog;
+			if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+				throw new Error("cache root must be an object");
+			}
+			return parsed;
 		}
 	} catch (e) {
 		consola.warn(`Failed to read existing cache from ${cachePath}`, e);

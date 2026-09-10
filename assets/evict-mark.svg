@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 112">
+  <title>Evict mark</title>
+  <!-- Flat orange E mark. Logo stays flat #FF6B35; gradients only for large graphics (#FF8A4C → #FF5C35). -->
+  <g fill="#FF6B35" transform="translate(52,0) skewX(-24)">
+    <rect x="0" y="0" width="76" height="30" rx="2"/>
+    <rect x="0" y="41" width="76" height="30" rx="2"/>
+    <rect x="0" y="82" width="76" height="30" rx="2"/>
+  </g>
+</svg>

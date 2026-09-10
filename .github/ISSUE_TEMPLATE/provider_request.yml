@@ -1,0 +1,39 @@
+name: Provider request
+description: Request or propose a dedicated provider integration.
+title: "[Provider]: "
+labels: [providers, enhancement, needs-triage]
+body:
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+      placeholder: Provider name and website
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: Models endpoint
+      description: Link to the official API documentation, not an API key.
+    validations:
+      required: true
+  - type: dropdown
+    id: authentication
+    attributes:
+      label: Authentication
+      options: [Public endpoint, Bearer token, API key, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: response
+    attributes:
+      label: Response shape
+      description: Provide a redacted example or link to the official schema.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Explain where generic discovery falls short for this provider.
+

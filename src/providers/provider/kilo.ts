@@ -5,7 +5,10 @@ export const kiloCodeProvider: AbstractProvider = {
 	isEnabled: () => true,
 	fetchModels: async (): Promise<Model[]> => {
 		try {
-			const response = await fetch("https://api.kilo.ai/api/gateway/models");
+			const response = await fetch("https://api.kilo.ai/api/gateway/models", {
+				signal: AbortSignal.timeout(15_000),
+				headers: { "User-Agent": "oc-evict/1" },
+			});
 
 			if (!response.ok) {
 				return [];
@@ -59,7 +62,7 @@ export const kiloCodeProvider: AbstractProvider = {
 			}));
 
 			return models;
-		} catch (error) {
+		} catch {
 			return [];
 		}
 	},

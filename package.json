@@ -1,7 +1,15 @@
 {
 	"name": "@mikthatguy/opencode-evict",
 	"version": "1.0.22",
-	"description": "Refresh OpenCode's local model cache with live provider data",
+	"description": "Live model registry synchronization for OpenCode",
+	"engines": {
+		"node": ">=20"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"sideEffects": false,
 	"type": "module",
 	"bin": {
 		"oc-evict": "dist/index.js"
@@ -23,7 +31,7 @@
 		"ai",
 		"provider"
 	],
-	"author": "OpenCode",
+	"author": "MIKTHATGUY",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
